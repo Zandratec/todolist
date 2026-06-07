@@ -936,57 +936,33 @@ body {
 .card-subtask {
   font-size: 0.75rem;
   line-height: 1.4;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--transition-fast);
 }
 
-.card-subtask .card-subtask {
-  padding-left: 14px;
-  border-left: 1px solid var(--border-color);
+.card-subtask:hover {
+  background: var(--bg-hover);
 }
 
 .card-subtask + .card-subtask {
   margin-top: 2px;
 }
 
-.card-subtask-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.card-subtask-checkbox {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--text-muted);
-  border-radius: 3px;
-  background: transparent;
-  cursor: pointer;
+.card-subtask-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
   flex-shrink: 0;
-  position: relative;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.card-subtask-checkbox:checked {
+.card-subtask-indicator.done {
   background: #2f9e44;
-  border-color: #2f9e44;
-}
-
-.card-subtask-checkbox:checked::after {
-  content: '';
-  position: absolute;
-  left: 3.5px;
-  top: 1px;
-  width: 4px;
-  height: 7px;
-  border: solid #fff;
-  border-width: 0 1.5px 1.5px 0;
-  transform: rotate(45deg);
-}
-
-.card-subtask-checkbox:hover {
-  border-color: var(--accent);
 }
 
 .card-subtask-completed {
@@ -1163,16 +1139,13 @@ body {
 
 .modal-overlay.view-mode #addTagBtn,
 .modal-overlay.view-mode #taskTagInput,
-.modal-overlay.view-mode #addSubtaskBtn,
-.modal-overlay.view-mode #subtaskInput,
 .modal-overlay.view-mode #addCommentBtn,
 .modal-overlay.view-mode #commentInput,
 .modal-overlay.view-mode #addAttachmentBtn,
-.modal-overlay.view-mode #addFileBtn,
 .modal-overlay.view-mode #attachmentUrl,
-.modal-overlay.view-mode #fileInput,
 .modal-overlay.view-mode .comment-form,
-.modal-overlay.view-mode .color-picker .color-option:not(.selected) {
+.modal-overlay.view-mode .color-picker .color-option:not(.selected),
+.modal-overlay.view-mode #modalSubtaskList .btn {
   display: none !important;
 }
 
@@ -1187,8 +1160,7 @@ body {
 }
 
 .modal-overlay.view-mode .task-tag .tag-remove,
-.modal-overlay.view-mode .subtask-item .subtask-edit,
-.modal-overlay.view-mode .subtask-item .subtask-remove,
+.modal-overlay.view-mode .modal-subtask-item .btn-icon,
 .modal-overlay.view-mode .comment-item .comment-remove,
 .modal-overlay.view-mode .attachment-item .attachment-remove {
   display: none !important;
@@ -1260,74 +1232,65 @@ body {
   margin-top: 4px;
 }
 
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.form-divider::before,
+.form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
 .form-error {
   font-size: 0.75rem;
   color: var(--danger);
   margin-top: 4px;
 }
 
-/* ===== SUBTASKS ===== */
-.subtask-list {
-  list-style: none;
-  padding-left: 20px;
-}
-
-.subtask-item {
+/* ===== MODAL SUBTASKS ===== */
+.modal-subtask-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
 }
 
-.subtask-item .subtask-checkbox {
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-  accent-color: var(--accent);
+.modal-subtask-item:hover {
+  background: var(--bg-hover);
+}
+
+.modal-subtask-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
   flex-shrink: 0;
 }
 
-.subtask-item .subtask-title {
+.modal-subtask-indicator.done {
+  background: #2f9e44;
+}
+
+.modal-subtask-item .subtask-title {
   font-size: 0.8125rem;
   color: var(--text-primary);
-  flex: 1;
   word-break: break-word;
 }
 
-.subtask-item .subtask-title.completed {
+.modal-subtask-item.subtask-done .subtask-title {
   text-decoration: line-through;
   color: var(--text-muted);
-}
-
-.subtask-item .subtask-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.subtask-item:hover .subtask-actions { opacity: 1; }
-
-.subtask-add-form {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
-  padding-left: 20px;
-}
-
-.subtask-add-form input {
-  flex: 1;
-  padding: 6px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: 0.8125rem;
-  outline: none;
-}
-
-.subtask-add-form input:focus {
-  border-color: var(--accent);
 }
 
 /* ===== COMMENTS ===== */

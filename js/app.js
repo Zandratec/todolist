@@ -76,7 +76,7 @@
         const card = e.target.closest('.task-card');
         const taskId = card ? card.dataset.taskId : null;
 
-        if (taskId && !e.target.closest('.btn-icon, .task-checkbox, .card-subtask-checkbox')) {
+        if (taskId && !e.target.closest('.btn-icon, .task-checkbox')) {
           if (dblClickState.taskId === taskId && dblClickState.timer) {
             clearTimeout(dblClickState.timer);
             dblClickState.timer = null;
@@ -112,6 +112,13 @@
         const dupeBtn = e.target.closest('[data-duplicate-task]');
         if (dupeBtn) {
           ui.duplicateTask(dupeBtn.dataset.duplicateTask);
+        }
+
+        // Добавить подзадачу с карточки
+        const addSubBtn = e.target.closest('[data-add-subtask]');
+        if (addSubBtn) {
+          e.stopPropagation();
+          kanban.addSubtaskFromCard(addSubBtn.dataset.addSubtask);
         }
 
         // Удалить задачу
@@ -199,17 +206,11 @@
     document.getElementById('taskTagInput')?.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); ui.addTag(); }
     });
-    document.getElementById('addSubtaskBtn')?.addEventListener('click', () => ui.addSubtaskUI());
-    document.getElementById('subtaskInput')?.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); ui.addSubtaskUI(); }
-    });
     document.getElementById('addCommentBtn')?.addEventListener('click', () => ui.addCommentUI());
     document.getElementById('commentInput')?.addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ui.addCommentUI(); }
     });
     document.getElementById('addAttachmentBtn')?.addEventListener('click', () => ui.addAttachmentLink());
-    document.getElementById('addFileBtn')?.addEventListener('click', () => ui.addFileAttachment());
-    document.getElementById('fileInput')?.addEventListener('change', (e) => ui.handleFileSelect(e));
 
     // === ПОДТВЕРЖДЕНИЕ ===
     document.getElementById('confirmActionBtn')?.addEventListener('click', () => ui.confirmAction());
@@ -218,6 +219,21 @@
     document.getElementById('columnSaveBtn')?.addEventListener('click', () => ui.saveColumn());
     document.getElementById('columnName')?.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); ui.saveColumn(); }
+    });
+
+    // === ПОДЗАДАЧИ (модалка) ===
+    document.getElementById('subtaskAddBtn')?.addEventListener('click', () => {
+      kanban.submitAddSubtask();
+    });
+    document.getElementById('subtaskNewTitle')?.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); kanban.submitAddSubtask(); }
+    });
+    document.getElementById('subtaskExistingSelect')?.addEventListener('change', function() {
+      if (this.value) {
+        document.getElementById('subtaskNewTitle').disabled = true;
+      } else {
+        document.getElementById('subtaskNewTitle').disabled = false;
+      }
     });
 
     // === РАЗМЕР КОЛОНОК ===

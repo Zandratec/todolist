@@ -12,7 +12,6 @@ TodoApp.UI = (function() {
   let editingTaskId = null;
   let editingProjectId = null;
   let currentTags = [];
-  let currentSubtasks = [];
   let currentComments = [];
   let currentAttachments = [];
   let currentTaskColor = null;
@@ -161,7 +160,6 @@ TodoApp.UI = (function() {
   function openTaskModal(taskId, prefillColumnId) {
     editingTaskId = taskId || null;
     currentTags = [];
-    currentSubtasks = [];
     currentComments = [];
     currentAttachments = [];
     currentTaskColor = null;
@@ -181,12 +179,11 @@ TodoApp.UI = (function() {
     deadlineInput.value = '';
     assigneeInput.value = '';
     document.getElementById('taskTagsContainer').innerHTML = '';
-    document.getElementById('subtaskList').innerHTML = '';
+    document.getElementById('modalSubtaskList').innerHTML = '<div class="text-muted text-sm" style="margin-bottom:8px;">Нет подзадач</div>';
     document.getElementById('commentList').innerHTML = '';
     document.getElementById('attachmentList').innerHTML = '';
     document.getElementById('commentInput').value = '';
     document.getElementById('taskTagInput').value = '';
-    document.getElementById('subtaskInput').value = '';
     document.getElementById('attachmentUrl').value = '';
 
     const modal = document.getElementById('taskModal');
@@ -203,13 +200,12 @@ TodoApp.UI = (function() {
         deadlineInput.value = task.deadline || '';
         assigneeInput.value = task.assignee || '';
         currentTags = [...(task.tags || [])];
-        currentSubtasks = deepClone(task.subtasks || []);
         currentComments = deepClone(task.comments || []);
         currentAttachments = deepClone(task.attachments || []);
         currentTaskColor = task.color || null;
         deleteBtn.style.display = 'inline-flex';
         renderTaskTags();
-        renderSubtasks(currentSubtasks, document.getElementById('subtaskList'));
+        renderModalSubtasks(task.id);
         renderComments(currentComments);
         renderAttachments(currentAttachments);
         renderTaskColorPicker(task.color || null);
@@ -250,7 +246,6 @@ TodoApp.UI = (function() {
         deadline,
         assignee,
         tags: currentTags,
-        subtasks: currentSubtasks,
         comments: currentComments,
         attachments: currentAttachments,
         color: currentTaskColor
@@ -308,7 +303,6 @@ TodoApp.UI = (function() {
         deadline: task.deadline,
         assignee: task.assignee,
         tags: [...(task.tags || [])],
-        subtasks: deepClone(task.subtasks || [])
       });
       kanban.render();
       renderSidebar();
@@ -402,125 +396,71 @@ TodoApp.UI = (function() {
     if (sel) sel.classList.add('selected');
   }
 
-  // ===== ПОДЗАДАЧИ =====
+  // ===== ПОДЗАДАЧИ (ссылки на задачи) =====
 
-  function addSubtaskUI() {
-    const input = document.getElementById('subtaskInput');
-    const title = input.value.trim();
-    if (!title) return;
-    const subtask = {
-      id: state.generateId(),
-      title,
-      completed: false,
-      subtasks: [],
-      createdAt: new Date().toISOString()
-    };
-    currentSubtasks.push(subtask);
-    input.value = '';
-    renderSubtasks(currentSubtasks, document.getElementById('subtaskList'));
-  }
-
-  function renderSubtasks(subtasksList, container, level) {
-    level = level || 0;
+  function renderModalSubtasks(taskId) {
+    const container = document.getElementById('modalSubtaskList');
     if (!container) return;
-    if (level === 0 && subtasksList === currentSubtasks) {
-      // Полная перерисовка
-      container.innerHTML = buildSubtaskHtml(subtasksList, level);
+    const task = tasks.getById(taskId);
+    if (!task || !task.subtaskIds || !task.subtaskIds.length) {
+      container.innerHTML = '<div class="text-muted text-sm" style="margin-bottom:8px;">Нет подзадач</div>';
+      return;
     }
-  }
-
-  function editSubtaskUI(subtaskId) {
-    const st = findSubtaskInList(currentSubtasks, subtaskId);
-    if (!st) return;
-    const newTitle = prompt('Редактировать подзадачу:', st.title);
-    if (!newTitle || newTitle.trim() === st.title) return;
-    st.title = newTitle.trim();
-    renderSubtasks(currentSubtasks, document.getElementById('subtaskList'));
-  }
-
-  function buildSubtaskHtml(subtasksList, level) {
-    if (!subtasksList || subtasksList.length === 0) return '';
-    let html = '<ul class="subtask-list">';
-    subtasksList.forEach(st => {
-      const completed = st.completed ? 'completed' : '';
-      const checked = st.completed ? 'checked' : '';
-      html += `
-        <li class="subtask-item">
-          <input type="checkbox" class="subtask-checkbox" ${checked}
-                 onchange="TodoApp.UI.toggleSubtaskUI('${st.id}')" aria-label="Отметить подзадачу">
-          <span class="subtask-title ${completed}">${kanban.escapeHtml(st.title)}</span>
-          <div class="subtask-actions">
-            <button class="btn-icon" onclick="TodoApp.UI.editSubtaskUI('${st.id}')" title="Редактировать" aria-label="Редактировать подзадачу">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button class="btn-icon" onclick="TodoApp.UI.addSubSubtaskUI('${st.id}')" title="Добавить подзадачу" aria-label="Добавить подзадачу">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-            <button class="btn-icon" onclick="TodoApp.UI.removeSubtaskUI('${st.id}')" title="Удалить" aria-label="Удалить подзадачу">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </li>`;
-      if (st.subtasks && st.subtasks.length > 0) {
-        html += buildSubtaskHtml(st.subtasks, level + 1);
-      }
+    let html = '';
+    task.subtaskIds.forEach(subId => {
+      const sub = tasks.getById(subId);
+      if (!sub) return;
+      const done = sub.columnId === 'done';
+      const subColor = sub.color || null;
+      const colorStyle = subColor ? `border-left:3px solid ${subColor};background:linear-gradient(90deg,${subColor}12,transparent);` : '';
+      html += `<div class="modal-subtask-item ${done ? 'subtask-done' : ''}" style="${colorStyle}" onclick="TodoApp.UI.openTaskModal('${subId}')">
+        <span class="modal-subtask-indicator ${done ? 'done' : ''}" ${subColor ? `style="background:${done ? '#2f9e44' : subColor}"` : ''}></span>
+        <span class="subtask-title">${kanban.escapeHtml(sub.title)}</span>
+        <div style="flex:1"></div>
+        <button class="btn-icon" onclick="event.stopPropagation();TodoApp.UI.removeModalSubtask('${taskId}','${subId}')" title="Удалить подзадачу" aria-label="Удалить подзадачу">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
     });
-    html += '</ul>';
-    return html;
+    html += `<button class="btn btn-secondary btn-sm" onclick="TodoApp.UI.promptAddSubtask('${taskId}')" style="margin-top:8px;">+ Добавить подзадачу</button>`;
+    container.innerHTML = html;
   }
 
-  function toggleSubtaskUI(subtaskId) {
-    const st = findSubtaskInList(currentSubtasks, subtaskId);
-    if (st) {
-      st.completed = !st.completed;
-      renderSubtasks(currentSubtasks, document.getElementById('subtaskList'));
+  function promptAddSubtask(taskId) {
+    const task = tasks.getById(taskId);
+    if (!task || task.columnId === 'done') {
+      showNotification('Нельзя изменить завершённую задачу', 'warning');
+      return;
     }
-  }
-
-  function addSubSubtaskUI(parentId) {
-    const title = prompt('Введите подзадачу:');
+    const input = prompt('Введите ID существующей задачи (или нажмите Enter, чтобы создать новую):');
+    if (input === null) return;
+    const trimmed = input.trim();
+    if (trimmed) {
+      const existing = tasks.getById(trimmed);
+      if (existing) {
+        tasks.addSubtaskRef(taskId, trimmed);
+        renderModalSubtasks(taskId);
+        kanban.render();
+        showNotification('Подзадача добавлена', 'success');
+        return;
+      }
+      showNotification('Задача с таким ID не найдена', 'warning');
+      return;
+    }
+    const title = prompt('Название новой подзадачи:');
     if (!title || !title.trim()) return;
-    const parent = findSubtaskInList(currentSubtasks, parentId);
-    if (parent) {
-      if (!parent.subtasks) parent.subtasks = [];
-      parent.subtasks.push({
-        id: state.generateId(),
-        title: title.trim(),
-        completed: false,
-        subtasks: [],
-        createdAt: new Date().toISOString()
-      });
-      renderSubtasks(currentSubtasks, document.getElementById('subtaskList'));
-    }
+    const newTask = tasks.create(task.projectId, task.columnId, { title: title.trim() });
+    tasks.addSubtaskRef(taskId, newTask.id);
+    renderModalSubtasks(taskId);
+    kanban.render();
+    showNotification('Подзадача создана', 'success');
   }
 
-  function removeSubtaskUI(subtaskId) {
-    removeSubtaskFromList(currentSubtasks, subtaskId);
-    renderSubtasks(currentSubtasks, document.getElementById('subtaskList'));
-  }
-
-  function findSubtaskInList(list, id) {
-    for (const st of list) {
-      if (st.id === id) return st;
-      if (st.subtasks && st.subtasks.length > 0) {
-        const found = findSubtaskInList(st.subtasks, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  function removeSubtaskFromList(list, id) {
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (list[i].id === id) {
-        list.splice(i, 1);
-        return true;
-      }
-      if (list[i].subtasks && list[i].subtasks.length > 0) {
-        if (removeSubtaskFromList(list[i].subtasks, id)) return true;
-      }
-    }
-    return false;
+  function removeModalSubtask(taskId, subTaskId) {
+    tasks.removeSubtaskRef(taskId, subTaskId);
+    renderModalSubtasks(taskId);
+    kanban.render();
+    showNotification('Подзадача удалена', 'info');
   }
 
   // ===== КОММЕНТАРИИ =====
@@ -579,40 +519,6 @@ TodoApp.UI = (function() {
     showNotification('Ссылка добавлена', 'success');
   }
 
-  function addFileAttachment() {
-    document.getElementById('fileInput').click();
-  }
-
-  function handleFileSelect(event) {
-    const files = event.target.files;
-    if (!files.length) return;
-
-    let loaded = 0;
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          currentAttachments.push({
-            id: state.generateId(),
-            name: file.name,
-            data: e.target.result,
-            type: 'file',
-            createdAt: new Date().toISOString()
-          });
-          loaded++;
-          if (loaded === files.length) {
-            renderAttachments(currentAttachments);
-            showNotification('Файлы добавлены', 'success');
-          }
-        } catch (err) {
-          showNotification('Ошибка при добавлении файла: ' + err.message, 'error');
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-    event.target.value = '';
-  }
-
   function renderAttachments(attachments) {
     const container = document.getElementById('attachmentList');
     if (!container) return;
@@ -621,16 +527,9 @@ TodoApp.UI = (function() {
       return;
     }
     container.innerHTML = attachments.map(a => {
-      if (a.type === 'link') {
-        return `<div class="attachment-item">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          <a href="${kanban.escapeHtml(a.data)}" target="_blank" rel="noopener">${kanban.escapeHtml(a.name)}</a>
-          <button class="remove-attachment" onclick="TodoApp.UI.removeAttachmentUI('${a.id}')">&times;</button>
-        </div>`;
-      }
       return `<div class="attachment-item">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <span>${kanban.escapeHtml(a.name)}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <a href="${kanban.escapeHtml(a.data || a.url)}" target="_blank" rel="noopener">${kanban.escapeHtml(a.name || a.url)}</a>
         <button class="remove-attachment" onclick="TodoApp.UI.removeAttachmentUI('${a.id}')">&times;</button>
       </div>`;
     }).join('');
@@ -1107,15 +1006,11 @@ TodoApp.UI = (function() {
     addTag,
     removeTag,
     editTag,
-    addSubtaskUI,
-    toggleSubtaskUI,
-    addSubSubtaskUI,
-    removeSubtaskUI,
-    editSubtaskUI,
+    renderModalSubtasks,
+    promptAddSubtask,
+    removeModalSubtask,
     addCommentUI,
     addAttachmentLink,
-    addFileAttachment,
-    handleFileSelect,
     removeAttachmentUI,
     performSearch,
     openSearchResult,
@@ -1155,15 +1050,11 @@ TodoApp.UI = (function() {
     addTag,
     removeTag,
     editTag,
-    addSubtaskUI,
-    toggleSubtaskUI,
-    addSubSubtaskUI,
-    removeSubtaskUI,
-    editSubtaskUI,
+    renderModalSubtasks,
+    promptAddSubtask,
+    removeModalSubtask,
     addCommentUI,
     addAttachmentLink,
-    addFileAttachment,
-    handleFileSelect,
     removeAttachmentUI,
     performSearch,
     openSearchResult,

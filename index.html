@@ -191,11 +191,7 @@
         <!-- ПОДЗАДАЧИ -->
         <div class="form-group">
           <label class="form-label">Подзадачи</label>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <input type="text" class="form-input" id="subtaskInput" placeholder="Новая подзадача" style="flex:1;">
-            <button class="btn btn-secondary btn-sm" id="addSubtaskBtn">Добавить</button>
-          </div>
-          <ul class="subtask-list" id="subtaskList" style="padding-left:0;"></ul>
+          <div id="modalSubtaskList"></div>
         </div>
 
         <!-- КОММЕНТАРИИ -->
@@ -215,9 +211,7 @@
           <div style="display:flex;gap:8px;">
             <input type="text" class="form-input" id="attachmentUrl" placeholder="URL ссылки" style="flex:1;">
             <button class="btn btn-secondary btn-sm" id="addAttachmentBtn">+ Ссылка</button>
-            <button class="btn btn-secondary btn-sm" id="addFileBtn">+ Файл</button>
           </div>
-          <input type="file" id="fileInput" style="display:none;" multiple>
         </div>
       </div>
       <div class="modal-footer">
@@ -269,6 +263,33 @@
       <div class="modal-footer" style="justify-content:center;">
         <button class="btn btn-secondary" data-modal-close>Отмена</button>
         <button class="btn btn-danger" id="confirmActionBtn">Подтвердить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: ДОБАВЛЕНИЕ ПОДЗАДАЧИ -->
+  <div class="modal-overlay" id="subtaskModal" role="dialog" aria-modal="true" aria-labelledby="subtaskModalTitle">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="subtaskModalTitle">Добавить подзадачу</h2>
+        <button class="modal-close" data-modal-close aria-label="Закрыть">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="subtaskExistingSelect">Выбрать существующую задачу</label>
+          <select class="form-select" id="subtaskExistingSelect">
+            <option value="">— Создать новую —</option>
+          </select>
+        </div>
+        <div class="form-divider"><span>или</span></div>
+        <div class="form-group">
+          <label class="form-label" for="subtaskNewTitle">Название новой подзадачи</label>
+          <input type="text" class="form-input" id="subtaskNewTitle" placeholder="Введите название" maxlength="200">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-modal-close>Отмена</button>
+        <button class="btn btn-primary" id="subtaskAddBtn">Добавить</button>
       </div>
     </div>
   </div>

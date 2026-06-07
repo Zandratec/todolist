@@ -41,7 +41,7 @@ TodoApp.Tasks = (function() {
       color: data.color || null,
       assignee: data.assignee || null,
       order: maxOrder + 1,
-      subtasks: data.subtasks || [],
+      subtaskIds: [],
       comments: data.comments || [],
       attachments: data.attachments || [],
       createdAt: new Date().toISOString(),
@@ -109,73 +109,57 @@ TodoApp.Tasks = (function() {
     return update(id, { columnId: newColumnId });
   }
 
-  // ===== ПОДЗАДАЧИ =====
+  // ===== ПОДЗАДАЧИ (ссылки на задачи) =====
 
-  function addSubtask(taskId, title, parentId) {
-    if (!title || !title.trim()) throw new Error('Заголовок подзадачи не может быть пустым');
+  function addSubtaskRef(taskId, subTaskId) {
     const task = getById(taskId);
     if (!task) throw new Error('Задача не найдена');
-
-    const subtask = {
-      id: state.generateId(),
-      title: title.trim(),
-      completed: false,
-      subtasks: [],
-      createdAt: new Date().toISOString()
-    };
-
-    if (parentId) {
-      // Рекурсивный поиск родительской подзадачи
-      const parent = findSubtask(task.subtasks, parentId);
-      if (parent) {
-        parent.subtasks.push(subtask);
-      } else {
-        task.subtasks.push(subtask);
-      }
-    } else {
-      task.subtasks.push(subtask);
-    }
-
-    state.saveDebounced();
-    return subtask;
-  }
-
-  function toggleSubtask(taskId, subtaskId) {
-    const task = getById(taskId);
-    if (!task) throw new Error('Задача не найдена');
-    const subtask = findSubtask(task.subtasks, subtaskId);
-    if (!subtask) throw new Error('Подзадача не найдена');
-    subtask.completed = !subtask.completed;
-    state.saveDebounced();
-    return subtask;
-  }
-
-  function removeSubtask(taskId, subtaskId) {
-    const task = getById(taskId);
-    if (!task) throw new Error('Задача не найдена');
-    removeSubtaskRecursive(task.subtasks, subtaskId);
+    const subTask = getById(subTaskId);
+    if (!subTask) throw new Error('Подзадача не найдена');
+    if (!task.subtaskIds) task.subtaskIds = [];
+    if (task.subtaskIds.includes(subTaskId)) return;
+    task.subtaskIds.push(subTaskId);
     state.saveDebounced();
   }
 
-  function updateSubtask(taskId, subtaskId, updates) {
+  function removeSubtaskRef(taskId, subTaskId) {
     const task = getById(taskId);
     if (!task) throw new Error('Задача не найдена');
-    const subtask = findSubtask(task.subtasks, subtaskId);
-    if (!subtask) throw new Error('Подзадача не найдена');
-    Object.assign(subtask, updates);
+    if (!task.subtaskIds) return;
+    task.subtaskIds = task.subtaskIds.filter(id => id !== subTaskId);
     state.saveDebounced();
-    return subtask;
   }
 
   function getSubtaskProgress(taskId) {
     const task = getById(taskId);
-    if (!task || !task.subtasks.length) return { total: 0, completed: 0, percent: 0 };
-    const counts = countSubtasksRecursive(task.subtasks);
+    if (!task || !task.subtaskIds || !task.subtaskIds.length) return { total: 0, completed: 0, percent: 0 };
+    const subs = task.subtaskIds.map(id => getById(id)).filter(Boolean);
+    let total = subs.length;
+    let completed = subs.filter(t => t.columnId === 'done').length;
     return {
-      total: counts.total,
-      completed: counts.completed,
-      percent: counts.total > 0 ? Math.round((counts.completed / counts.total) * 100) : 0
+      total,
+      completed,
+      percent: total > 0 ? Math.round((completed / total) * 100) : 0
     };
+  }
+
+  function toggleSubtask(taskId, subtaskId) {
+    const sub = getById(subtaskId);
+    if (!sub) return;
+    const task = getById(taskId);
+    if (!task) return;
+    if (sub.columnId === 'done') {
+      sub.columnId = task.columnId;
+    } else {
+      const project = TodoApp.Projects.getById(sub.projectId);
+      if (project) {
+        const doneCol = (project.columns || []).find(c => c.title.toLowerCase() === 'done' || c.title.toLowerCase() === 'готово');
+        sub.columnId = doneCol ? doneCol.id : 'done';
+      } else {
+        sub.columnId = 'done';
+      }
+    }
+    state.saveDebounced();
   }
 
   // ===== КОММЕНТАРИИ =====
@@ -225,47 +209,6 @@ TodoApp.Tasks = (function() {
     if (!task) throw new Error('Задача не найдена');
     task.attachments = task.attachments.filter(a => a.id !== attachmentId);
     state.saveDebounced();
-  }
-
-  // ===== ВСПОМОГАТЕЛЬНЫЕ =====
-
-  function findSubtask(subtasks, id) {
-    for (const st of subtasks) {
-      if (st.id === id) return st;
-      if (st.subtasks && st.subtasks.length > 0) {
-        const found = findSubtask(st.subtasks, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  function removeSubtaskRecursive(subtasks, id) {
-    for (let i = subtasks.length - 1; i >= 0; i--) {
-      if (subtasks[i].id === id) {
-        subtasks.splice(i, 1);
-        return true;
-      }
-      if (subtasks[i].subtasks && subtasks[i].subtasks.length > 0) {
-        if (removeSubtaskRecursive(subtasks[i].subtasks, id)) return true;
-      }
-    }
-    return false;
-  }
-
-  function countSubtasksRecursive(subtasks) {
-    let total = 0;
-    let completed = 0;
-    for (const st of subtasks) {
-      total++;
-      if (st.completed) completed++;
-      if (st.subtasks && st.subtasks.length > 0) {
-        const childCounts = countSubtasksRecursive(st.subtasks);
-        total += childCounts.total;
-        completed += childCounts.completed;
-      }
-    }
-    return { total, completed };
   }
 
   // ===== ФИЛЬТРАЦИЯ =====
@@ -374,11 +317,10 @@ TodoApp.Tasks = (function() {
     moveToColumn,
     reorderInColumn,
     toggleComplete,
-    addSubtask,
-    toggleSubtask,
-    removeSubtask,
-    updateSubtask,
+    addSubtaskRef,
+    removeSubtaskRef,
     getSubtaskProgress,
+    toggleSubtask,
     addComment,
     removeComment,
     addAttachment,

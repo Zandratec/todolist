@@ -9,6 +9,7 @@ TodoApp.Kanban = (function() {
 
   let dragSourceTaskId = null;
   let dragSourceColumnId = null;
+  let _subtaskParentId = null;
 
   // ===== ОСНОВНАЯ ОТРИСОВКА =====
 
@@ -194,8 +195,8 @@ TodoApp.Kanban = (function() {
     }
 
     let subtasksHtml = '';
-    if (task.subtasks && task.subtasks.length > 0) {
-      subtasksHtml = `<div class="card-subtasks">${renderCardSubtasks(task.subtasks, task.id)}</div>`;
+    if (task.subtaskIds && task.subtaskIds.length > 0) {
+      subtasksHtml = `<div class="card-subtasks">${renderCardSubtasks(task.subtaskIds, task.id)}</div>`;
     }
 
     let assigneeHtml = '';
@@ -232,6 +233,11 @@ TodoApp.Kanban = (function() {
           ${deadlineHtml}
         </div>
         <div class="task-card-actions">
+          ${!isCompleted ? `<button class="btn-icon" data-add-subtask="${task.id}" title="Добавить подзадачу" aria-label="Добавить подзадачу">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+          </button>` : ''}
           <button class="btn-icon" data-duplicate-task="${task.id}" title="Дублировать" aria-label="Дублировать задачу">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -246,21 +252,20 @@ TodoApp.Kanban = (function() {
       </div>`;
   }
 
-  function renderCardSubtasks(subtasksList, taskId) {
-    if (!subtasksList || subtasksList.length === 0) return '';
+  function renderCardSubtasks(subtaskIds, taskId) {
+    if (!subtaskIds || subtaskIds.length === 0) return '';
     let html = '';
-    subtasksList.forEach(st => {
-      const cls = st.completed ? 'card-subtask-completed' : '';
-      const checked = st.completed ? 'checked' : '';
+    subtaskIds.forEach(subId => {
+      const sub = tasks.getById(subId);
+      if (!sub) return;
+      const done = sub.columnId === 'done';
+      const cls = done ? 'card-subtask-completed' : '';
+      const subColor = sub.color || null;
+      const colorStyle = subColor ? `border-left:3px solid ${subColor};background:linear-gradient(90deg,${subColor}12,transparent);padding-left:6px;` : '';
       html += `
-        <div class="card-subtask">
-          <label class="card-subtask-label">
-            <input type="checkbox" class="card-subtask-checkbox" ${checked}
-                   onchange="TodoApp.Kanban.toggleCardSubtask('${taskId}','${st.id}')"
-                   aria-label="Отметить подзадачу">
-            <span class="${cls}">${escapeHtml(st.title)}</span>
-          </label>
-          ${st.subtasks && st.subtasks.length > 0 ? renderCardSubtasks(st.subtasks, taskId) : ''}
+        <div class="card-subtask" style="${colorStyle}" onclick="event.stopPropagation();TodoApp.UI.openTaskModal('${sub.id}')" title="Открыть подзадачу">
+          <span class="card-subtask-indicator ${done ? 'done' : ''}" ${subColor ? `style="background:${done ? '#2f9e44' : subColor}"` : ''}></span>
+          <span class="${cls}">${escapeHtml(sub.title)}</span>
         </div>`;
     });
     return html;
@@ -273,6 +278,87 @@ TodoApp.Kanban = (function() {
     } catch (e) {
       // ignore
     }
+  }
+
+  // ===== ПОДЗАДАЧИ НА КАРТОЧКЕ =====
+
+  function addSubtaskFromCard(taskId) {
+    const task = tasks.getById(taskId);
+    if (!task) return;
+    if (task.columnId === 'done') {
+      if (window.TodoApp.UI) TodoApp.UI.showNotification('Нельзя изменить завершённую задачу', 'warning');
+      return;
+    }
+    _subtaskParentId = taskId;
+    const select = document.getElementById('subtaskExistingSelect');
+    if (select) {
+      select.innerHTML = '<option value="">— Создать новую —</option>';
+      const allTasks = tasks.getAll(task.projectId).filter(t => t.id !== taskId);
+      const existing = (task.subtaskIds || []).map(id => id);
+      allTasks.forEach(t => {
+        if (existing.includes(t.id)) return;
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        const col = findColumnTitle(t.columnId);
+        opt.textContent = `${t.title}${col ? ' [' + col + ']' : ''}`;
+        select.appendChild(opt);
+      });
+    }
+    document.getElementById('subtaskNewTitle').value = '';
+    document.getElementById('subtaskNewTitle').disabled = false;
+    if (window.TodoApp.UI) TodoApp.UI.openModal('subtaskModal');
+    setTimeout(() => {
+      const titleInput = document.getElementById('subtaskNewTitle');
+      if (titleInput) titleInput.focus();
+    }, 100);
+  }
+
+  function submitAddSubtask() {
+    const parentId = _subtaskParentId;
+    if (!parentId) return;
+    const select = document.getElementById('subtaskExistingSelect');
+    const titleInput = document.getElementById('subtaskNewTitle');
+    const selectedId = select ? select.value : '';
+    const newTitle = titleInput ? titleInput.value.trim() : '';
+
+    if (selectedId) {
+      tasks.addSubtaskRef(parentId, selectedId);
+      if (window.TodoApp.UI) {
+        TodoApp.UI.closeModal('subtaskModal');
+        TodoApp.UI.showNotification('Подзадача добавлена', 'success');
+      }
+      render();
+      return;
+    }
+    if (!newTitle) {
+      if (window.TodoApp.UI) TodoApp.UI.showNotification('Введите название или выберите задачу', 'warning');
+      return;
+    }
+    const parent = tasks.getById(parentId);
+    if (!parent) return;
+    // Создаём задачу с наследованными значениями от родителя
+    const newTask = tasks.create(parent.projectId, parent.columnId, {
+      title: newTitle,
+      deadline: parent.deadline || undefined,
+      assignee: parent.assignee || undefined,
+      tags: parent.tags ? [...parent.tags] : undefined,
+      color: parent.color || undefined
+    });
+    tasks.addSubtaskRef(parentId, newTask.id);
+    if (window.TodoApp.UI) {
+      TodoApp.UI.closeModal('subtaskModal');
+      // Открываем модалку задачи в режиме редактирования
+      TodoApp.UI.openTaskModal(newTask.id);
+      TodoApp.UI.switchToEditMode();
+    }
+    render();
+  }
+
+  function findColumnTitle(columnId) {
+    const project = projects.getActive();
+    if (!project || !project.columns) return null;
+    const col = project.columns.find(c => c.id === columnId);
+    return col ? col.title : null;
   }
 
   // ===== DRAG & DROP =====
@@ -649,6 +735,8 @@ TodoApp.Kanban = (function() {
     render,
     renderTaskCard,
     toggleCardSubtask,
+    addSubtaskFromCard,
+    submitAddSubtask,
     handleDragStart,
     handleDragEnd,
     handleDrop,
