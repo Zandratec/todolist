@@ -893,7 +893,8 @@ body {
   gap: 8px;
 }
 
-.task-subtasks-progress {
+/* ===== СТЕК ПОДЗАДАЧ ===== */
+.task-stack-toggle {
   font-size: 0.75rem;
   color: var(--text-muted);
   display: flex;
@@ -905,11 +906,11 @@ body {
   transition: background var(--transition-fast);
 }
 
-.task-subtasks-progress:hover {
+.task-stack-toggle:hover {
   background: var(--bg-hover);
 }
 
-.task-subtasks-progress .progress-bar {
+.task-stack-toggle .progress-bar {
   width: 60px;
   height: 4px;
   background: var(--bg-tertiary);
@@ -917,83 +918,55 @@ body {
   overflow: hidden;
 }
 
-.task-subtasks-progress .progress-fill {
+.task-stack-toggle .progress-fill {
   height: 100%;
   background: var(--accent);
   border-radius: 2px;
   transition: width var(--transition-normal);
 }
 
-.subtasks-chevron {
+.stack-chevron {
   transition: transform 0.2s ease;
-  margin-left: auto;
 }
 
-.subtasks-chevron.expanded {
+.stack-chevron.expanded {
   transform: rotate(180deg);
 }
 
-/* ===== ПОДЗАДАЧИ НА КАРТОЧКЕ ===== */
-.card-subtasks {
-  max-height: 0;
-  overflow: hidden;
-  margin: 0;
-  scrollbar-width: thin;
-  transition: max-height 0.25s ease, margin 0.25s ease, opacity 0.25s ease;
+/* ===== КАРТОЧКИ ПОДЗАДАЧ ===== */
+.task-subtask-card {
+  margin-left: 24px;
+  width: calc(100% - 24px);
+  position: relative;
+}
+
+.task-subtask-card::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 0;
+  bottom: 50%;
+  width: 16px;
+  border-left: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  border-radius: 0 0 0 8px;
+}
+
+.task-subtask-card:last-child::before {
+  bottom: 50%;
+}
+
+.task-subtask-card + .task-subtask-card {
+  margin-top: 0;
+  border-top: 1px solid var(--border-light);
+}
+
+.task-subtask-card .task-card-actions {
   opacity: 0;
 }
 
-.card-subtasks.expanded {
-  max-height: 200px;
-  margin: 4px 0;
+.task-subtask-card:hover .task-card-actions {
   opacity: 1;
-  overflow-y: auto;
-}
-
-.card-subtasks::-webkit-scrollbar {
-  width: 4px;
-}
-
-.card-subtasks::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
-}
-
-.card-subtask {
-  font-size: 0.75rem;
-  line-height: 1.4;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background var(--transition-fast);
-}
-
-.card-subtask:hover {
-  background: var(--bg-hover);
-}
-
-.card-subtask + .card-subtask {
-  margin-top: 2px;
-}
-
-.card-subtask-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.card-subtask-indicator.done {
-  background: #2f9e44;
-}
-
-.card-subtask-completed {
-  text-decoration: line-through;
-  opacity: 0.5;
 }
 
 .task-assignee {

@@ -10,7 +10,7 @@ TodoApp.Kanban = (function() {
   let dragSourceTaskId = null;
   let dragSourceColumnId = null;
   let _subtaskParentId = null;
-  let _expandedSubtasks = {};
+  let _expandedStacks = {};
 
   // ===== ОСНОВНАЯ ОТРИСОВКА =====
 
@@ -120,10 +120,10 @@ TodoApp.Kanban = (function() {
               </button>
             </div>
           </div>
-          <div class="kanban-column-body" data-column-body
-               data-column-id="${col.id}">
-            ${colTasks.map((task, idx) => renderTaskCard(task, activeProject, idx + 1)).join('')}
-          </div>
+           <div class="kanban-column-body" data-column-body
+                data-column-id="${col.id}">
+             ${renderColumnTasks(colTasks, activeProject)}
+           </div>
           <div class="kanban-column-footer">
             <button class="add-task-btn" data-add-task="${col.id}" aria-label="Добавить задачу в ${col.title}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -153,7 +153,26 @@ TodoApp.Kanban = (function() {
 
   // ===== ОТРИСОВКА КАРТОЧКИ ЗАДАЧИ =====
 
-  function renderTaskCard(task, project, idx) {
+  function renderColumnTasks(tasksList, project) {
+    let html = '';
+    let idx = 1;
+    tasksList.forEach(task => {
+      html += renderTaskCard(task, project, idx++);
+      if (task.subtaskIds && task.subtaskIds.length > 0) {
+        if (_expandedStacks[task.id]) {
+          task.subtaskIds.forEach(subId => {
+            const sub = tasks.getById(subId);
+            if (sub) {
+              html += renderTaskCard(sub, project, idx++, true);
+            }
+          });
+        }
+      }
+    });
+    return html;
+  }
+
+  function renderTaskCard(task, project, idx, isSubtask) {
     const priorityClass = task.priority || 'medium';
     const isDeadlineSoon = checkDeadlineSoon(task.deadline);
     const progress = tasks.getSubtaskProgress(task.id);
@@ -186,19 +205,16 @@ TodoApp.Kanban = (function() {
     }
 
     let progressHtml = '';
-    let subtasksHtml = '';
-    if (task.subtaskIds && task.subtaskIds.length > 0) {
-      const expanded = _expandedSubtasks[task.id] ? true : false;
-      progressHtml = `<div class="task-subtasks-progress" data-expand-subtasks="${task.id}">
+    if (hasChildren) {
+      progressHtml = `<div class="task-stack-toggle" data-toggle-stack="${task.id}">
+        <svg class="stack-chevron ${stackExpanded ? 'expanded' : ''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
         <span>${progress.completed}/${progress.total}</span>
         <div class="progress-bar">
           <div class="progress-fill" style="width:${progress.percent}%"></div>
         </div>
-        <svg class="subtasks-chevron ${expanded ? 'expanded' : ''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
       </div>`;
-      subtasksHtml = `<div class="card-subtasks ${expanded ? 'expanded' : ''}" id="subtasks-${task.id}">${renderCardSubtasks(task.subtaskIds, task.id)}</div>`;
     }
 
     let assigneeHtml = '';
@@ -206,8 +222,10 @@ TodoApp.Kanban = (function() {
       assigneeHtml = `<div class="task-assignee" title="${escapeHtml(task.assignee)}">${assigneeInitial}</div>`;
     }
 
+    const cardClasses = `task-card ${isCompleted ? 'completed' : ''} ${isSubtask ? 'task-subtask-card' : ''} ${stackExpanded ? 'stack-expanded' : ''}`;
+
     return `
-      <div class="task-card ${isCompleted ? 'completed' : ''}"
+      <div class="${cardClasses}"
            draggable="true"
            data-task-id="${task.id}"
            data-column-id="${task.columnId}"
@@ -227,15 +245,14 @@ TodoApp.Kanban = (function() {
         </div>
         <div class="task-card-body">
           ${tagsHtml}
-          ${subtasksHtml}
+          ${progressHtml}
           <div class="task-meta">
-            ${progressHtml}
             ${assigneeHtml}
           </div>
           ${deadlineHtml}
         </div>
         <div class="task-card-actions">
-          ${!isCompleted ? `<button class="btn-icon" data-add-subtask="${task.id}" title="Добавить подзадачу" aria-label="Добавить подзадачу">
+          ${!isCompleted && !isSubtask ? `<button class="btn-icon" data-add-subtask="${task.id}" title="Добавить подзадачу" aria-label="Добавить подзадачу">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
             </svg>
@@ -254,32 +271,6 @@ TodoApp.Kanban = (function() {
       </div>`;
   }
 
-  function renderCardSubtasks(subtaskIds, taskId) {
-    if (!subtaskIds || subtaskIds.length === 0) return '';
-    let html = '';
-    subtaskIds.forEach(subId => {
-      const sub = tasks.getById(subId);
-      if (!sub) return;
-      const done = sub.columnId === 'done';
-      const cls = done ? 'card-subtask-completed' : '';
-      const subColor = sub.color || null;
-      const colorStyle = subColor ? `border-left:3px solid ${subColor};background:linear-gradient(90deg,${subColor}12,transparent);padding-left:6px;` : '';
-      html += `
-        <div class="card-subtask" style="${colorStyle}" onclick="event.stopPropagation();TodoApp.UI.openTaskModal('${sub.id}')" title="Открыть подзадачу">
-          <span class="card-subtask-indicator ${done ? 'done' : ''}" ${subColor ? `style="background:${done ? '#2f9e44' : subColor}"` : ''}></span>
-          <span class="${cls}">${escapeHtml(sub.title)}</span>
-        </div>`;
-    });
-    return html;
-  }
-
-  function toggleCardSubtask(taskId, subtaskId) {
-    try {
-      tasks.toggleSubtask(taskId, subtaskId);
-      render();
-    } catch (e) {
-      // ignore
-    }
   }
 
   // ===== ПОДЗАДАЧИ НА КАРТОЧКЕ =====
@@ -315,11 +306,11 @@ TodoApp.Kanban = (function() {
     }, 100);
   }
 
-  function toggleSubtaskList(taskId) {
-    if (_expandedSubtasks[taskId]) {
-      delete _expandedSubtasks[taskId];
+  function toggleSubtaskStack(taskId) {
+    if (_expandedStacks[taskId]) {
+      delete _expandedStacks[taskId];
     } else {
-      _expandedSubtasks[taskId] = true;
+      _expandedStacks[taskId] = true;
     }
     render();
   }
@@ -745,10 +736,9 @@ TodoApp.Kanban = (function() {
   const api = {
     render,
     renderTaskCard,
-    toggleCardSubtask,
     addSubtaskFromCard,
     submitAddSubtask,
-    toggleSubtaskList,
+    toggleSubtaskStack,
     handleDragStart,
     handleDragEnd,
     handleDrop,

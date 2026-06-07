@@ -121,11 +121,11 @@
           kanban.addSubtaskFromCard(addSubBtn.dataset.addSubtask);
         }
 
-        // Развернуть/свернуть список подзадач
-        const expandBtn = e.target.closest('[data-expand-subtasks]');
-        if (expandBtn) {
+        // Развернуть/свернуть стек подзадач
+        const toggleStack = e.target.closest('[data-toggle-stack]');
+        if (toggleStack) {
           e.stopPropagation();
-          kanban.toggleSubtaskList(expandBtn.dataset.expandSubtasks);
+          kanban.toggleSubtaskStack(toggleStack.dataset.toggleStack);
         }
 
         // Удалить задачу
