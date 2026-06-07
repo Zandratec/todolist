@@ -1160,7 +1160,6 @@ body {
 }
 
 .modal-overlay.view-mode .task-tag .tag-remove,
-.modal-overlay.view-mode .modal-subtask-item .btn-icon,
 .modal-overlay.view-mode .comment-item .comment-remove,
 .modal-overlay.view-mode .attachment-item .attachment-remove {
   display: none !important;

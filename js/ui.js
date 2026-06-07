@@ -416,51 +416,9 @@ TodoApp.UI = (function() {
       html += `<div class="modal-subtask-item ${done ? 'subtask-done' : ''}" style="${colorStyle}" onclick="TodoApp.UI.openTaskModal('${subId}')">
         <span class="modal-subtask-indicator ${done ? 'done' : ''}" ${subColor ? `style="background:${done ? '#2f9e44' : subColor}"` : ''}></span>
         <span class="subtask-title">${kanban.escapeHtml(sub.title)}</span>
-        <div style="flex:1"></div>
-        <button class="btn-icon" onclick="event.stopPropagation();TodoApp.UI.removeModalSubtask('${taskId}','${subId}')" title="Удалить подзадачу" aria-label="Удалить подзадачу">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
       </div>`;
     });
-    html += `<button class="btn btn-secondary btn-sm" onclick="TodoApp.UI.promptAddSubtask('${taskId}')" style="margin-top:8px;">+ Добавить подзадачу</button>`;
     container.innerHTML = html;
-  }
-
-  function promptAddSubtask(taskId) {
-    const task = tasks.getById(taskId);
-    if (!task || task.columnId === 'done') {
-      showNotification('Нельзя изменить завершённую задачу', 'warning');
-      return;
-    }
-    const input = prompt('Введите ID существующей задачи (или нажмите Enter, чтобы создать новую):');
-    if (input === null) return;
-    const trimmed = input.trim();
-    if (trimmed) {
-      const existing = tasks.getById(trimmed);
-      if (existing) {
-        tasks.addSubtaskRef(taskId, trimmed);
-        renderModalSubtasks(taskId);
-        kanban.render();
-        showNotification('Подзадача добавлена', 'success');
-        return;
-      }
-      showNotification('Задача с таким ID не найдена', 'warning');
-      return;
-    }
-    const title = prompt('Название новой подзадачи:');
-    if (!title || !title.trim()) return;
-    const newTask = tasks.create(task.projectId, task.columnId, { title: title.trim() });
-    tasks.addSubtaskRef(taskId, newTask.id);
-    renderModalSubtasks(taskId);
-    kanban.render();
-    showNotification('Подзадача создана', 'success');
-  }
-
-  function removeModalSubtask(taskId, subTaskId) {
-    tasks.removeSubtaskRef(taskId, subTaskId);
-    renderModalSubtasks(taskId);
-    kanban.render();
-    showNotification('Подзадача удалена', 'info');
   }
 
   // ===== КОММЕНТАРИИ =====
@@ -1007,8 +965,6 @@ TodoApp.UI = (function() {
     removeTag,
     editTag,
     renderModalSubtasks,
-    promptAddSubtask,
-    removeModalSubtask,
     addCommentUI,
     addAttachmentLink,
     removeAttachmentUI,
@@ -1051,8 +1007,6 @@ TodoApp.UI = (function() {
     removeTag,
     editTag,
     renderModalSubtasks,
-    promptAddSubtask,
-    removeModalSubtask,
     addCommentUI,
     addAttachmentLink,
     removeAttachmentUI,
