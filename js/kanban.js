@@ -28,7 +28,7 @@ TodoApp.Kanban = (function() {
 
     columns.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(col => {
       let colTasks = tasks.getByColumn(activeProject.id, col.id);
-      
+
       // Применяем фильтры
       if (currentFilters.priority) {
         colTasks = colTasks.filter(t => t.priority === currentFilters.priority);
@@ -110,7 +110,7 @@ TodoApp.Kanban = (function() {
                   onclick="TodoApp.UI.openColumnModal('${col.id}')"
                   title="Настройки колонки"></span>
             <span class="kanban-column-title" ondblclick="TodoApp.UI.openColumnModal('${col.id}')">${escapeHtml(col.title)}</span>
-            <span class="kanban-column-count">${colTasks.length}</span>
+            <span class="kanban-column-count">${countParentTasks(colTasks)}</span>
             <div class="kanban-column-actions">
               <button class="btn-icon" data-delete-column title="Удалить колонку" aria-label="Удалить колонку">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -122,7 +122,7 @@ TodoApp.Kanban = (function() {
           </div>
            <div class="kanban-column-body" data-column-body
                 data-column-id="${col.id}">
-             ${renderColumnTasks(colTasks, activeProject)}
+              ${renderColumnTasks(colTasks, activeProject)}
            </div>
           <div class="kanban-column-footer">
             <button class="add-task-btn" data-add-task="${col.id}" aria-label="Добавить задачу в ${col.title}">
@@ -153,19 +153,30 @@ TodoApp.Kanban = (function() {
 
   // ===== ОТРИСОВКА КАРТОЧКИ ЗАДАЧИ =====
 
+  function countParentTasks(tasksList) {
+    const subtaskIds = new Set();
+    tasksList.forEach(t => {
+      if (t.subtaskIds) t.subtaskIds.forEach(id => subtaskIds.add(id));
+    });
+    return tasksList.filter(t => !subtaskIds.has(t.id)).length;
+  }
+
   function renderColumnTasks(tasksList, project) {
     let html = '';
     let idx = 1;
     tasksList.forEach(task => {
-      html += renderTaskCard(task, project, idx++);
-      if (task.subtaskIds && task.subtaskIds.length > 0) {
-        if (_expandedStacks[task.id]) {
-          task.subtaskIds.forEach(subId => {
-            const sub = tasks.getById(subId);
-            if (sub) {
-              html += renderTaskCard(sub, project, idx++, true);
-            }
-          });
+      const isSubtask = tasksList.some(t => t.subtaskIds && t.subtaskIds.includes(task.id));
+      if (!isSubtask) {
+        html += renderTaskCard(task, project, idx++);
+        if (task.subtaskIds && task.subtaskIds.length > 0) {
+          if (_expandedStacks[task.id]) {
+            task.subtaskIds.forEach(subId => {
+              const sub = tasks.getById(subId);
+              if (sub) {
+                html += renderTaskCard(sub, project, idx++, true);
+              }
+            });
+          }
         }
       }
     });
@@ -224,7 +235,7 @@ TodoApp.Kanban = (function() {
       assigneeHtml = `<div class="task-assignee" title="${escapeHtml(task.assignee)}">${assigneeInitial}</div>`;
     }
 
-    const cardClasses = `task-card ${isCompleted ? 'completed' : ''} ${isSubtask ? 'task-subtask-card' : ''} ${stackExpanded ? 'stack-expanded' : ''}`;
+    const cardClasses = `task-card ${isCompleted ? 'completed' : ''} ${isSubtask ? 'task-subtask-card' : ''}`;
 
     return `
       <div class="${cardClasses}"
@@ -421,6 +432,17 @@ TodoApp.Kanban = (function() {
     if (!task) return;
 
     tasks.moveToColumn(taskId, targetColumnId);
+
+    // Если родитель — переносим его невыполненные подзадачи следом
+    const droppedTask = tasks.getById(taskId);
+    if (droppedTask && droppedTask.subtaskIds && droppedTask.subtaskIds.length > 0) {
+      droppedTask.subtaskIds.forEach(subId => {
+        const sub = tasks.getById(subId);
+        if (sub && sub.columnId !== 'done') {
+          tasks.moveToColumn(subId, targetColumnId);
+        }
+      });
+    }
 
     const activeProject = projects.getActive();
     if (activeProject) {
