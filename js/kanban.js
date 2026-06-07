@@ -180,6 +180,8 @@ TodoApp.Kanban = (function() {
     const deadlineDate = task.deadline ? formatDate(task.deadline) : '';
     const isCompleted = task.columnId === 'done';
     const taskColor = task.color || null;
+    const hasChildren = task.subtaskIds && task.subtaskIds.length > 0;
+    const stackExpanded = hasChildren && _expandedStacks[task.id];
 
     let tagsHtml = '';
     if (task.tags && task.tags.length > 0) {
@@ -269,8 +271,6 @@ TodoApp.Kanban = (function() {
           </button>
         </div>
       </div>`;
-  }
-
   }
 
   // ===== ПОДЗАДАЧИ НА КАРТОЧКЕ =====
