@@ -10,6 +10,7 @@ TodoApp.Kanban = (function() {
   let dragSourceTaskId = null;
   let dragSourceColumnId = null;
   let _subtaskParentId = null;
+  let _expandedSubtasks = {};
 
   // ===== ОСНОВНАЯ ОТРИСОВКА =====
 
@@ -185,18 +186,19 @@ TodoApp.Kanban = (function() {
     }
 
     let progressHtml = '';
-    if (progress.total > 0) {
-      progressHtml = `<div class="task-subtasks-progress">
+    let subtasksHtml = '';
+    if (task.subtaskIds && task.subtaskIds.length > 0) {
+      const expanded = _expandedSubtasks[task.id] ? true : false;
+      progressHtml = `<div class="task-subtasks-progress" data-expand-subtasks="${task.id}">
         <span>${progress.completed}/${progress.total}</span>
         <div class="progress-bar">
           <div class="progress-fill" style="width:${progress.percent}%"></div>
         </div>
+        <svg class="subtasks-chevron ${expanded ? 'expanded' : ''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
       </div>`;
-    }
-
-    let subtasksHtml = '';
-    if (task.subtaskIds && task.subtaskIds.length > 0) {
-      subtasksHtml = `<div class="card-subtasks">${renderCardSubtasks(task.subtaskIds, task.id)}</div>`;
+      subtasksHtml = `<div class="card-subtasks ${expanded ? 'expanded' : ''}" id="subtasks-${task.id}">${renderCardSubtasks(task.subtaskIds, task.id)}</div>`;
     }
 
     let assigneeHtml = '';
@@ -311,6 +313,15 @@ TodoApp.Kanban = (function() {
       const titleInput = document.getElementById('subtaskNewTitle');
       if (titleInput) titleInput.focus();
     }, 100);
+  }
+
+  function toggleSubtaskList(taskId) {
+    if (_expandedSubtasks[taskId]) {
+      delete _expandedSubtasks[taskId];
+    } else {
+      _expandedSubtasks[taskId] = true;
+    }
+    render();
   }
 
   function submitAddSubtask() {
@@ -737,6 +748,7 @@ TodoApp.Kanban = (function() {
     toggleCardSubtask,
     addSubtaskFromCard,
     submitAddSubtask,
+    toggleSubtaskList,
     handleDragStart,
     handleDragEnd,
     handleDrop,

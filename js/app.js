@@ -121,6 +121,13 @@
           kanban.addSubtaskFromCard(addSubBtn.dataset.addSubtask);
         }
 
+        // Развернуть/свернуть список подзадач
+        const expandBtn = e.target.closest('[data-expand-subtasks]');
+        if (expandBtn) {
+          e.stopPropagation();
+          kanban.toggleSubtaskList(expandBtn.dataset.expandSubtasks);
+        }
+
         // Удалить задачу
         const deleteBtn = e.target.closest('[data-delete-task]');
         if (deleteBtn) {

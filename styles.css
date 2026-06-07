@@ -899,6 +899,14 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+.task-subtasks-progress:hover {
+  background: var(--bg-hover);
 }
 
 .task-subtasks-progress .progress-bar {
@@ -916,12 +924,30 @@ body {
   transition: width var(--transition-normal);
 }
 
+.subtasks-chevron {
+  transition: transform 0.2s ease;
+  margin-left: auto;
+}
+
+.subtasks-chevron.expanded {
+  transform: rotate(180deg);
+}
+
 /* ===== ПОДЗАДАЧИ НА КАРТОЧКЕ ===== */
 .card-subtasks {
-  max-height: 120px;
-  overflow-y: auto;
-  margin: 4px 0;
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
   scrollbar-width: thin;
+  transition: max-height 0.25s ease, margin 0.25s ease, opacity 0.25s ease;
+  opacity: 0;
+}
+
+.card-subtasks.expanded {
+  max-height: 200px;
+  margin: 4px 0;
+  opacity: 1;
+  overflow-y: auto;
 }
 
 .card-subtasks::-webkit-scrollbar {
